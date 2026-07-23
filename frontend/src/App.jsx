@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Chart from 'react-apexcharts';
 
-// ⭐️ 어드민으로 사용할 닉네임 3개를 여기에 똑같이 적어주세요!
-const ADMIN_IDS = ['ch__os', 'CIDER22', 'Zzzxvr'];
+// ⭐️ 어드민으로 사용할 닉네임 3개
+const ADMIN_IDS = ['chos1125', 'admin1', 'admin2'];
 
 function App() {
   const [user, setUser] = useState(null);
@@ -17,11 +17,11 @@ function App() {
   const [history, setHistory] = useState([]);
   const [tradeQty, setTradeQty] = useState(''); 
   
-  // ⭐️ 어드민 전용 상태 변수
+  // 어드민 전용 상태 변수
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminData, setAdminData] = useState([]);
 
-  const isAdmin = user && ADMIN_IDS.includes(user.username); // 어드민인지 확인
+  const isAdmin = user && ADMIN_IDS.includes(user.username);
 
   const handleAuth = async (type) => {
     try {
@@ -63,6 +63,13 @@ function App() {
     } catch (err) {}
   };
 
+  const fetchHistory = async (stockId) => {
+    try {
+      const res = await axios.get(`https://stock-in-dos.onrender.com/api/stocks/${stockId}/history`);
+      setHistory(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {}
+  };
+
   const fetchPortfolio = async () => {
     if (!user) return;
     try {
@@ -71,7 +78,6 @@ function App() {
     } catch (err) {}
   };
 
-  // ⭐️ 어드민 데이터 불러오기 함수
   const fetchAdminData = async () => {
     try {
       const res = await axios.get(`https://stock-in-dos.onrender.com/api/admin/dashboard?username=${user.username}`);
@@ -110,6 +116,26 @@ function App() {
     }
   }, [user, showAdmin]);
 
+  useEffect(() => {
+    if (selectedStock) fetchHistory(selectedStock.id);
+  }, [selectedStock?.id]);
+
+  const chartSeries = [{
+    name: selectedStock ? selectedStock.name : '시세',
+    data: history.map(item => ({ x: new Date(item.recorded_at).getTime(), y: item.price }))
+  }];
+
+  const chartOptions = {
+    chart: { type: 'area', background: 'transparent', toolbar: { show: false }, animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } } },
+    theme: { mode: 'dark' },
+    xaxis: { type: 'datetime', labels: { style: { colors: '#8b9bb4' } } },
+    yaxis: { labels: { formatter: (val) => val ? val.toLocaleString() + '원' : '', style: { colors: '#8b9bb4' } } },
+    stroke: { curve: 'smooth', width: 3, colors: ['#D4AF37'] },
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, colors: ['#D4AF37'] } },
+    colors: ['#D4AF37'],
+    grid: { borderColor: '#1e293b', strokeDashArray: 4 }
+  };
+
   const inputStyle = { width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #1C2541', backgroundColor: '#0B132B', color: '#fff', fontSize: '1rem', boxSizing: 'border-box' };
 
   if (!user) {
@@ -135,7 +161,7 @@ function App() {
     );
   }
 
-  // ⭐️ 어드민 패널 화면 렌더링
+  // 어드민 패널 화면
   if (showAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#0B132B', color: '#ffffff', padding: '40px 20px', fontFamily: "'Pretendard', sans-serif" }}>
@@ -193,7 +219,6 @@ function App() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1C2541', paddingBottom: '10px', marginBottom: '15px' }}>
               <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff' }}>👑 {user.username} 님</span>
               <div style={{ display: 'flex', gap: '10px' }}>
-                {/* ⭐️ 어드민일 때만 보이는 특별한 버튼 */}
                 {isAdmin && (
                   <button onClick={fetchAdminData} style={{ backgroundColor: '#D4AF37', color: '#0B132B', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>
                     ⚙️ 어드민 패널
@@ -229,15 +254,15 @@ function App() {
           })}
         </div>
 
-        {/* 거래 영역 */}
+        {/* ⭐️ 차트 및 거래 영역 복구! */}
         {selectedStock && (
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
-            {/* 차트는 코드 길이 상 생략되었지만 동작엔 문제없게 UI를 간소화했습니다. 필요하시면 기존 차트 코드를 유지하셔도 됩니다! */}
             <div style={{ backgroundColor: '#111936', border: '1px solid #1C2541', padding: '30px', borderRadius: '20px' }}>
-              <h2 style={{ color: '#fff' }}>{selectedStock.name} 실시간 거래</h2>
-              <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8b9bb4' }}>
-                <h1 style={{ fontSize: '3rem', color: '#D4AF37' }}>{selectedStock.current_price.toLocaleString()} 원</h1>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div><h2 style={{ margin: '0 0 5px 0', fontSize: '1.5rem', color: '#fff' }}>{selectedStock.name} 차트</h2></div>
+                <div style={{ textAlign: 'right' }}><h2 style={{ margin: 0, color: '#D4AF37', fontSize: '2rem' }}>{selectedStock.current_price ? selectedStock.current_price.toLocaleString() : 0}원</h2></div>
               </div>
+              <Chart options={chartOptions} series={chartSeries} type="area" height={400} />
             </div>
 
             <div style={{ backgroundColor: '#111936', border: '1px solid #1C2541', padding: '30px', borderRadius: '20px', display: 'flex', flexDirection: 'column' }}>
