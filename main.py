@@ -55,7 +55,7 @@ def update_stock_prices():
         conn.close()
 
 scheduler = BackgroundScheduler()
-scheduler.add_job(update_stock_prices, 'interval', minutes=20)
+scheduler.add_job(update_stock_prices, 'interval', minutes=1)
 scheduler.start()
 
 # --- [조회 API] ---
