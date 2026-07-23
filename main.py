@@ -254,3 +254,46 @@ def manipulate_price(data: ManipulationRequest, x_admin_token: str = Header(None
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
     pending_prices[data.stock_id] = data.target_price
     return {"message": f"{data.stock_id}번 주식 {data.target_price}원 예약 완료."}
+# ================= [어드민 전용 API] =================
+@app.get("/api/admin/dashboard")
+def get_admin_dashboard(username: str):
+    # ⭐️ 1. 여기에 어드민으로 쓸 마인크래프트 닉네임 3개를 적어주세요!
+    ADMINS = ["chos1125", "admin1", "admin2"]
+    
+    if username not in ADMINS:
+        raise HTTPException(status_code=403, detail="어드민 권한이 없습니다.")
+        
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 모든 유저 정보 가져오기
+    cursor.execute("SELECT id, username, cash FROM users")
+    users = cursor.fetchall()
+    
+    # 모든 유저의 주식 보유량 및 현재 가치 가져오기
+    cursor.execute("""
+        SELECT us.user_id, s.name, us.quantity, s.current_price
+        FROM user_stocks us
+        JOIN stocks s ON us.stock_id = s.id
+        WHERE us.quantity > 0
+    """)
+    stocks_data = cursor.fetchall()
+    conn.close()
+    
+    user_dict = {u['id']: {"username": u['username'], "cash": u['cash'], "total_stock_value": 0, "holdings": []} for u in users}
+    
+    for st in stocks_data:
+        uid = st['user_id']
+        if uid in user_dict:
+            val = st['quantity'] * st['current_price']
+            user_dict[uid]['total_stock_value'] += val
+            user_dict[uid]['holdings'].append(f"{st['name']} {st['quantity']}주")
+            
+    # 총 자산 계산 및 정렬 (랭킹)
+    result = []
+    for uid, data in user_dict.items():
+        data['total_assets'] = data['cash'] + data['total_stock_value']
+        result.append(data)
+        
+    result.sort(key=lambda x: x['total_assets'], reverse=True) # 돈 많은 순서대로 1등부터 정렬
+    return result
