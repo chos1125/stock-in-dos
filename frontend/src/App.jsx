@@ -4,7 +4,7 @@ import Chart from 'react-apexcharts';
 
 // ⭐️ 어드민으로 사용할 닉네임 3개
 const ADMIN_IDS = ['ch__os', 'CIDER22', 'Zzzxvr'];
-const API_BASE = 'https://stock-in-dos.onrender.com'; // 백엔드 주소
+const API_BASE = 'https://stock-in-dos.onrender.com';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -16,18 +16,15 @@ function App() {
   const [history, setHistory] = useState([]);
   const [tradeQty, setTradeQty] = useState(''); 
   
-  // 어드민 상태 변수
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminData, setAdminData] = useState([]);
-  const [bankReqs, setBankReqs] = useState([]); // ⭐️ 어드민용 입출금 대기 목록
+  const [bankReqs, setBankReqs] = useState([]); 
 
-  // 유저 입출금 신청 상태 변수
   const [showBankForm, setShowBankForm] = useState(false);
   const [bankForm, setBankForm] = useState({ req_type: '입금', amount: '' });
 
   const isAdmin = user && ADMIN_IDS.includes(user.username);
 
-  // --- [API 함수들] ---
   const handleAuth = async (type) => {
     try {
       const url = type === 'login' ? `${API_BASE}/api/auth/login` : `${API_BASE}/api/auth/register`;
@@ -113,7 +110,6 @@ function App() {
     }
   };
 
-  // ⭐️ 유저: 입출금 신청 함수
   const submitBankRequest = async () => {
     const amt = Number(bankForm.amount);
     if (amt <= 0 || !Number.isInteger(amt)) {
@@ -122,7 +118,6 @@ function App() {
     if (bankForm.req_type === '출금' && amt > portfolio.cash) {
       alert("보유 현금보다 많이 출금할 수 없습니다!"); return;
     }
-
     try {
       const res = await axios.post(`${API_BASE}/api/bank/request`, {
         username: user.username, req_type: bankForm.req_type, amount: amt
@@ -135,20 +130,18 @@ function App() {
     }
   };
 
-  // ⭐️ 어드민: 입출금 승인/거절 처리 함수
   const processBankRequest = async (req_id, action) => {
     try {
       const res = await axios.post(`${API_BASE}/api/admin/bank/process`, {
         admin_name: user.username, req_id: req_id, action: action
       });
       alert(res.data.message);
-      fetchAdminData(); // 처리 후 목록 새로고침
+      fetchAdminData();
     } catch (err) {
       alert(err.response?.data?.detail || "처리 실패");
     }
   };
 
-  // --- [useEffect 훅] ---
   useEffect(() => {
     if (user && !showAdmin) {
       fetchStocks();
@@ -162,7 +155,6 @@ function App() {
     if (selectedStock) fetchHistory(selectedStock.id);
   }, [selectedStock?.id]);
 
-  // --- [차트 설정] ---
   const chartSeries = [{
     name: selectedStock ? selectedStock.name : '시세',
     data: history.map(item => ({ x: new Date(item.recorded_at).getTime(), y: item.price }))
@@ -176,7 +168,6 @@ function App() {
   };
   const inputStyle = { width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #1C2541', backgroundColor: '#0B132B', color: '#fff', fontSize: '1rem', boxSizing: 'border-box' };
 
-  // --- [로그인 화면] ---
   if (!user) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#0B132B', color: '#fff', fontFamily: "'Pretendard', sans-serif" }}>
@@ -200,7 +191,6 @@ function App() {
     );
   }
 
-  // --- [어드민 패널 화면] ---
   if (showAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#0B132B', color: '#ffffff', padding: '40px 20px', fontFamily: "'Pretendard', sans-serif" }}>
@@ -210,7 +200,6 @@ function App() {
             <button onClick={() => setShowAdmin(false)} style={{ padding: '10px 20px', backgroundColor: '#1C2541', color: '#fff', border: '1px solid #8b9bb4', borderRadius: '8px', cursor: 'pointer' }}>거래소로 돌아가기</button>
           </div>
           
-          {/* ⭐️ 어드민: 입출금 승인 대기 목록 */}
           <div style={{ backgroundColor: '#111936', borderRadius: '16px', border: '1px solid #1C2541', padding: '20px', marginBottom: '30px' }}>
             <h2 style={{ color: '#fff', marginBottom: '20px', fontSize: '1.2rem' }}>💰 입출금 승인 대기 목록</h2>
             {bankReqs.length === 0 ? (
@@ -219,10 +208,7 @@ function App() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #1C2541', color: '#8b9bb4' }}>
-                    <th style={{ padding: '10px' }}>닉네임</th>
-                    <th style={{ padding: '10px' }}>구분</th>
-                    <th style={{ padding: '10px' }}>금액</th>
-                    <th style={{ padding: '10px' }}>승인 / 거절</th>
+                    <th style={{ padding: '10px' }}>닉네임</th><th style={{ padding: '10px' }}>구분</th><th style={{ padding: '10px' }}>금액</th><th style={{ padding: '10px' }}>승인 / 거절</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -242,7 +228,6 @@ function App() {
             )}
           </div>
 
-          {/* 어드민: 유저 랭킹 */}
           <div style={{ backgroundColor: '#111936', borderRadius: '16px', border: '1px solid #1C2541', padding: '20px', overflowX: 'auto' }}>
             <h2 style={{ color: '#fff', marginBottom: '20px', fontSize: '1.2rem' }}>🏆 유저 자산 랭킹</h2>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -265,71 +250,102 @@ function App() {
     );
   }
 
-  // --- [메인 거래소 화면] ---
+  // --- [메인 거래소 화면 렌더링 로직] ---
   const ownedStock = portfolio.stocks.find(s => s.id === selectedStock?.id);
   const myQty = ownedStock ? ownedStock.quantity : 0;
   const totalPrice = selectedStock ? (selectedStock.current_price * (Number(tradeQty) || 0)) : 0;
+
+  // ⭐️ [총 수익률 및 총 자산 계산 로직]
+  let totalInvested = 0;
+  let totalCurrentValue = 0;
+  portfolio.stocks.forEach(s => {
+    totalInvested += (s.average_price * s.quantity);
+    totalCurrentValue += (s.current_price * s.quantity);
+  });
+  const totalProfit = totalCurrentValue - totalInvested;
+  const totalReturnRate = totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0;
+  const totalAssets = portfolio.cash + totalCurrentValue;
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#0B132B', color: '#ffffff', padding: '40px 20px', fontFamily: "'Pretendard', sans-serif" }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* 상단 지갑 & 헤더 영역 */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
+        {/* 상단 헤더 영역 */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
+          
+          {/* 로고 영역 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={{ width: '40px', height: '40px', backgroundColor: '#D4AF37', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0B132B', fontWeight: '900', fontSize: '20px' }}>D</div>
-            <h1 style={{ margin: 0, fontSize: '1.8rem' }}>DOS 증권 거래소</h1>
+            <h1 style={{ margin: 0, fontSize: '1.8rem', whiteSpace: 'nowrap' }}>DOS 증권 거래소</h1>
           </div>
           
-          <div style={{ backgroundColor: '#111936', padding: '20px 25px', borderRadius: '16px', border: '1px solid #1C2541', minWidth: '280px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1C2541', paddingBottom: '10px', marginBottom: '15px' }}>
-              <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff' }}>👑 {user.username} 님</span>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {isAdmin && <button onClick={fetchAdminData} style={{ backgroundColor: '#D4AF37', color: '#0B132B', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>⚙️ 어드민 패널</button>}
-                <button onClick={logout} style={{ backgroundColor: 'transparent', color: '#8b9bb4', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem' }}>로그아웃</button>
-              </div>
-            </div>
+          {/* ⭐️ 우측 패널들 (총 수익률 패널 + 내 정보 패널) */}
+          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
             
-            <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-              <div>
-                <span style={{ color: '#8b9bb4', fontSize: '0.9rem', display: 'block', marginBottom: '5px' }}>보유 현금 (KRW)</span>
-                <span style={{ fontSize: '1.8rem', fontWeight: '900', color: '#D4AF37' }}>{portfolio.cash.toLocaleString()}원</span>
+            {/* ⭐️ 새로 추가된 [총 수익률 요약 패널] (왼쪽 휑한 곳을 채워줍니다!) */}
+            <div style={{ backgroundColor: '#111936', padding: '20px 25px', borderRadius: '16px', border: '1px solid #1C2541', minWidth: '260px', display: 'flex', flexDirection: 'column' }}>
+              <span style={{ color: '#8b9bb4', fontSize: '1rem', fontWeight: 'bold', marginBottom: '10px' }}>📊 내 총 주식 수익률</span>
+              <div style={{ fontSize: '2.8rem', fontWeight: '900', color: totalReturnRate > 0 ? '#ff4d4f' : totalReturnRate < 0 ? '#3b82f6' : '#fff', marginBottom: '5px' }}>
+                {totalReturnRate > 0 ? '+' : ''}{totalReturnRate.toFixed(2)}%
               </div>
-              <button onClick={() => setShowBankForm(!showBankForm)} style={{ padding: '6px 12px', backgroundColor: '#1C2541', color: '#D4AF37', border: '1px solid #D4AF37', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>입출금 뱅킹</button>
+              <div style={{ color: totalProfit > 0 ? '#ff4d4f' : totalProfit < 0 ? '#3b82f6' : '#8b9bb4', fontSize: '1.2rem', fontWeight: 'bold', marginBottom: '15px' }}>
+                {totalProfit > 0 ? '▲' : totalProfit < 0 ? '▼' : ''} {Math.abs(totalProfit).toLocaleString()} 원
+              </div>
+              <div style={{ marginTop: 'auto', paddingTop: '15px', borderTop: '1px solid #1C2541' }}>
+                <span style={{ color: '#8b9bb4', fontSize: '0.9rem' }}>총 자산 (현금+주식): </span>
+                <span style={{ color: '#D4AF37', fontWeight: 'bold' }}>{totalAssets.toLocaleString()} 원</span>
+              </div>
             </div>
 
-            {/* ⭐️ 유저: 입출금 신청 패널 */}
-            {showBankForm && (
-              <div style={{ backgroundColor: '#0B132B', padding: '15px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #1C2541' }}>
-                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-                  <button onClick={() => setBankForm({...bankForm, req_type: '입금'})} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer', backgroundColor: bankForm.req_type === '입금' ? '#ff4d4f' : '#1C2541', color: '#fff' }}>입금 신청</button>
-                  <button onClick={() => setBankForm({...bankForm, req_type: '출금'})} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer', backgroundColor: bankForm.req_type === '출금' ? '#3b82f6' : '#1C2541', color: '#fff' }}>출금 신청</button>
+            {/* 기존 유저 패널 */}
+            <div style={{ backgroundColor: '#111936', padding: '20px 25px', borderRadius: '16px', border: '1px solid #1C2541', minWidth: '280px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1C2541', paddingBottom: '10px', marginBottom: '15px' }}>
+                <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff' }}>👑 {user.username} 님</span>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  {isAdmin && <button onClick={fetchAdminData} style={{ backgroundColor: '#D4AF37', color: '#0B132B', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }}>⚙️ 어드민 패널</button>}
+                  <button onClick={logout} style={{ backgroundColor: 'transparent', color: '#8b9bb4', border: 'none', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem' }}>로그아웃</button>
                 </div>
-                <input type="number" placeholder="금액 입력" value={bankForm.amount} onChange={e => setBankForm({...bankForm, amount: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #1C2541', backgroundColor: '#111936', color: '#fff', marginBottom: '10px', boxSizing: 'border-box' }} />
-                <button onClick={submitBankRequest} style={{ width: '100%', padding: '10px', backgroundColor: '#D4AF37', color: '#0B132B', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>신청하기 (디코 스샷 필수)</button>
               </div>
-            )}
+              
+              <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div>
+                  <span style={{ color: '#8b9bb4', fontSize: '0.9rem', display: 'block', marginBottom: '5px' }}>보유 현금 (KRW)</span>
+                  <span style={{ fontSize: '1.8rem', fontWeight: '900', color: '#D4AF37' }}>{portfolio.cash.toLocaleString()}원</span>
+                </div>
+                <button onClick={() => setShowBankForm(!showBankForm)} style={{ padding: '6px 12px', backgroundColor: '#1C2541', color: '#D4AF37', border: '1px solid #D4AF37', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>입출금 뱅킹</button>
+              </div>
 
-            {/* ⭐️ 내 보유 주식 + 수익률(빨간불/파란불) */}
-            <div>
-              <span style={{ color: '#8b9bb4', fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>보유 주식 내역</span>
-              {portfolio.stocks.length === 0 ? (
-                <div style={{ color: '#5a6b8a', fontSize: '0.9rem' }}>보유중인 주식이 없습니다.</div>
-              ) : (
-                portfolio.stocks.map((s, idx) => (
-                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.95rem' }}>
-                    <span style={{ color: '#fff' }}>{s.name}</span>
-                    <div>
-                      {/* 한국 주식 기준: 플러스는 빨강, 마이너스는 파랑 */}
-                      <span style={{ color: s.return_rate > 0 ? '#ff4d4f' : s.return_rate < 0 ? '#3b82f6' : '#8b9bb4', marginRight: '10px', fontSize: '0.85rem' }}>
-                        {s.return_rate > 0 ? '▲' : s.return_rate < 0 ? '▼' : '-'} {s.return_rate}%
-                      </span>
-                      <span style={{ color: '#D4AF37', fontWeight: 'bold' }}>{s.quantity}주</span>
-                    </div>
+              {showBankForm && (
+                <div style={{ backgroundColor: '#0B132B', padding: '15px', borderRadius: '8px', marginBottom: '15px', border: '1px solid #1C2541' }}>
+                  <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                    <button onClick={() => setBankForm({...bankForm, req_type: '입금'})} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer', backgroundColor: bankForm.req_type === '입금' ? '#ff4d4f' : '#1C2541', color: '#fff' }}>입금 신청</button>
+                    <button onClick={() => setBankForm({...bankForm, req_type: '출금'})} style={{ flex: 1, padding: '8px', borderRadius: '6px', border: 'none', fontWeight: 'bold', cursor: 'pointer', backgroundColor: bankForm.req_type === '출금' ? '#3b82f6' : '#1C2541', color: '#fff' }}>출금 신청</button>
                   </div>
-                ))
+                  <input type="number" placeholder="금액 입력" value={bankForm.amount} onChange={e => setBankForm({...bankForm, amount: e.target.value})} style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #1C2541', backgroundColor: '#111936', color: '#fff', marginBottom: '10px', boxSizing: 'border-box' }} />
+                  <button onClick={submitBankRequest} style={{ width: '100%', padding: '10px', backgroundColor: '#D4AF37', color: '#0B132B', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>신청하기 (디코 스샷 필수)</button>
+                </div>
               )}
+
+              <div>
+                <span style={{ color: '#8b9bb4', fontSize: '0.9rem', display: 'block', marginBottom: '8px' }}>보유 주식 내역</span>
+                {portfolio.stocks.length === 0 ? (
+                  <div style={{ color: '#5a6b8a', fontSize: '0.9rem' }}>보유중인 주식이 없습니다.</div>
+                ) : (
+                  portfolio.stocks.map((s, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', fontSize: '0.95rem' }}>
+                      <span style={{ color: '#fff' }}>{s.name}</span>
+                      <div>
+                        <span style={{ color: s.return_rate > 0 ? '#ff4d4f' : s.return_rate < 0 ? '#3b82f6' : '#8b9bb4', marginRight: '10px', fontSize: '0.85rem' }}>
+                          {s.return_rate > 0 ? '▲' : s.return_rate < 0 ? '▼' : '-'} {s.return_rate}%
+                        </span>
+                        <span style={{ color: '#D4AF37', fontWeight: 'bold' }}>{s.quantity}주</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
+
           </div>
         </div>
 
