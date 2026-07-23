@@ -244,7 +244,7 @@ function App() {
                   padding: '24px', borderRadius: '16px', backgroundColor: isSelected ? '#152243' : '#111936', border: isSelected ? '2px solid #D4AF37' : '2px solid #1C2541', cursor: 'pointer',
                   boxShadow: isSelected ? '0 8px 24px rgba(212, 175, 55, 0.15)' : '0 4px 12px rgba(0,0,0,0.2)'
                 }}>
-                <div style={{ color: isSelected ? '#D4AF37' : '#8b9bb4', fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '8px' }}>CODE : {String(stock.id).padStart(4, '0')}</div>
+                
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                   <div style={{ fontWeight: 'bold', fontSize: '1.4rem', color: '#fff' }}>{stock.name}</div>
                   <div style={{ fontSize: '1.6rem', fontWeight: '800', color: isSelected ? '#D4AF37' : '#fff' }}>{stock.current_price ? stock.current_price.toLocaleString() : 0} KRW</div>
