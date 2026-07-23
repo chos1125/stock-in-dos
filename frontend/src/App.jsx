@@ -3,7 +3,7 @@ import axios from 'axios';
 import Chart from 'react-apexcharts';
 
 // ⭐️ 어드민으로 사용할 닉네임 3개
-const ADMIN_IDS = ['chos1125', 'admin1', 'admin2'];
+const ADMIN_IDS = ['ch__os', 'CIDER22', 'Zzzxvr'];
 
 function App() {
   const [user, setUser] = useState(null);
