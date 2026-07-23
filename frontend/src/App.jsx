@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Chart from 'react-apexcharts';
 
-// ⭐️ 어드민으로 사용할 닉네임 3개
+// ⭐️ 1. 어드민 아이디 최신화 완료!
 const ADMIN_IDS = ['ch__os', 'CIDER22', 'Zzzxvr'];
 const API_BASE = 'https://stock-in-dos.onrender.com';
 
@@ -23,7 +23,26 @@ function App() {
   const [showBankForm, setShowBankForm] = useState(false);
   const [bankForm, setBankForm] = useState({ req_type: '입금', amount: '' });
 
+  // ⭐️ 2. 25분(1500초) 카운트다운 상태 변수
+  const UPDATE_INTERVAL = 25 * 60; 
+  const [timeLeft, setTimeLeft] = useState(UPDATE_INTERVAL);
+
   const isAdmin = user && ADMIN_IDS.includes(user.username);
+
+  // ⭐️ 타이머 1초씩 줄어드는 로직
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setTimeLeft((prev) => (prev <= 1 ? UPDATE_INTERVAL : prev - 1));
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, []);
+
+  // ⭐️ 초를 분:초(MM:SS) 형식으로 예쁘게 바꿔주는 함수
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   const handleAuth = async (type) => {
     try {
@@ -250,12 +269,10 @@ function App() {
     );
   }
 
-  // --- [메인 거래소 화면 렌더링 로직] ---
   const ownedStock = portfolio.stocks.find(s => s.id === selectedStock?.id);
   const myQty = ownedStock ? ownedStock.quantity : 0;
   const totalPrice = selectedStock ? (selectedStock.current_price * (Number(tradeQty) || 0)) : 0;
 
-  // ⭐️ [총 수익률 및 총 자산 계산 로직]
   let totalInvested = 0;
   let totalCurrentValue = 0;
   portfolio.stocks.forEach(s => {
@@ -270,21 +287,24 @@ function App() {
     <div style={{ minHeight: '100vh', backgroundColor: '#0B132B', color: '#ffffff', padding: '40px 20px', fontFamily: "'Pretendard', sans-serif" }}>
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
         
-        {/* 상단 헤더 영역 */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
-          
-          {/* 로고 영역 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={{ width: '40px', height: '40px', backgroundColor: '#D4AF37', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0B132B', fontWeight: '900', fontSize: '20px' }}>D</div>
             <h1 style={{ margin: 0, fontSize: '1.8rem', whiteSpace: 'nowrap' }}>DOS 증권 거래소</h1>
           </div>
           
-          {/* ⭐️ 우측 패널들 (총 수익률 패널 + 내 정보 패널) */}
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
             
-            {/* ⭐️ 새로 추가된 [총 수익률 요약 패널] (왼쪽 휑한 곳을 채워줍니다!) */}
+            {/* ⭐️ 총 수익률 요약 패널 + 25분 타이머 추가 */}
             <div style={{ backgroundColor: '#111936', padding: '20px 25px', borderRadius: '16px', border: '1px solid #1C2541', minWidth: '260px', display: 'flex', flexDirection: 'column' }}>
-              <span style={{ color: '#8b9bb4', fontSize: '1rem', fontWeight: 'bold', marginBottom: '10px' }}>📊 내 총 주식 수익률</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ color: '#8b9bb4', fontSize: '1rem', fontWeight: 'bold' }}>📊 내 총 주식 수익률</span>
+                {/* ⭐️ 타이머 뱃지 */}
+                <div style={{ backgroundColor: '#1C2541', padding: '5px 12px', borderRadius: '20px', border: '1px solid #D4AF37', color: '#D4AF37', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  ⏳ 다음 변동 {formatTime(timeLeft)}
+                </div>
+              </div>
+
               <div style={{ fontSize: '2.8rem', fontWeight: '900', color: totalReturnRate > 0 ? '#ff4d4f' : totalReturnRate < 0 ? '#3b82f6' : '#fff', marginBottom: '5px' }}>
                 {totalReturnRate > 0 ? '+' : ''}{totalReturnRate.toFixed(2)}%
               </div>
@@ -297,7 +317,6 @@ function App() {
               </div>
             </div>
 
-            {/* 기존 유저 패널 */}
             <div style={{ backgroundColor: '#111936', padding: '20px 25px', borderRadius: '16px', border: '1px solid #1C2541', minWidth: '280px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1C2541', paddingBottom: '10px', marginBottom: '15px' }}>
                 <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#fff' }}>👑 {user.username} 님</span>
@@ -349,7 +368,6 @@ function App() {
           </div>
         </div>
 
-        {/* 주식 목록 영역 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginBottom: '40px' }}>
           {stocks.map(stock => {
             const isSelected = selectedStock?.id === stock.id;
@@ -365,7 +383,6 @@ function App() {
           })}
         </div>
 
-        {/* 차트 및 거래 영역 */}
         {selectedStock && (
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
             <div style={{ backgroundColor: '#111936', border: '1px solid #1C2541', padding: '30px', borderRadius: '20px' }}>
