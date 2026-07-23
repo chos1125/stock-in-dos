@@ -191,7 +191,7 @@ def sell_stock(req: TradeRequest):
     return {"message": f"매도 완료! (+{total_price}원)"}
 
 # --- ⭐️ 어드민 시스템 (입출금 & 대시보드 추가!) ---
-ADMINS = ["chos1125", "admin1", "admin2"]
+ADMINS = ["ch__os", "CIDER22", "Zzzxvr"]
 
 @app.get("/api/admin/dashboard")
 def get_admin_dashboard(username: str):
