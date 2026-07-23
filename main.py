@@ -258,7 +258,7 @@ def manipulate_price(data: ManipulationRequest, x_admin_token: str = Header(None
 @app.get("/api/admin/dashboard")
 def get_admin_dashboard(username: str):
     # ⭐️ 1. 여기에 어드민으로 쓸 마인크래프트 닉네임 3개를 적어주세요!
-    ADMINS = ["chos1125", "admin1", "admin2"]
+    ADMINS = ["ch__os", "CIDER22", "Zzzxvr"]
     
     if username not in ADMINS:
         raise HTTPException(status_code=403, detail="어드민 권한이 없습니다.")
