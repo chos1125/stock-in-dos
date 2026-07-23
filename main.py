@@ -1,12 +1,17 @@
 import random
 import math
 import pymysql
+import os # 👈 새로 추가
+from dotenv import load_dotenv # 👈 새로 추가
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import BaseModel
 
+load_dotenv() # 👈 새로 추가 (금고 열기)
+
 app = FastAPI()
+# ... (아래는 그대로)
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,13 +21,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_HOST = "localhost"
-DB_USER = "root"
-DB_PASS = "1223"
-DB_NAME = "stock_db"
+DB_HOST = "mysql-14904abe-jackson1630o-9acc.f.aivencloud.com"
+DB_USER = "avnadmin"
+DB_PASS = os.getenv("DB_PASS") # 👈 이제 진짜 비밀번호 대신 이렇게 적습니다! (핵심⭐️)
+DB_NAME = "defaultdb"
+DB_PORT = 26565
 
 def get_db_connection():
-    return pymysql.connect(host=DB_HOST, user=DB_USER, password=DB_PASS, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor)
+    return pymysql.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASS, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor)
 
 pending_prices = {}
 
