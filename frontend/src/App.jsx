@@ -73,17 +73,24 @@ function App() {
     }
   };
 
-  const fetchStocks = async () => {
+ const fetchStocks = async () => {
     try {
       const res = await axios.get('https://stock-in-dos.onrender.com/api/stocks');
       if (Array.isArray(res.data)) {
         setStocks(res.data);
-        if (!selectedStock && res.data.length > 0) setSelectedStock(res.data[0]);
-        // 선택된 주식의 실시간 가격 업데이트
-        if (selectedStock) {
-          const updatedSelected = res.data.find(s => s.id === selectedStock.id);
-          if (updatedSelected) setSelectedStock(updatedSelected);
-        }
+        
+        // ⭐️ 핵심 수정 부분: 타이머가 항상 최신 선택 상태(prev)를 기억하도록 변경!
+        setSelectedStock((prev) => {
+          // 아무것도 선택 안 되어 있으면 1번 주식 보여주기
+          if (!prev && res.data.length > 0) return res.data[0];
+          
+          // 이미 선택한 주식이 있다면, 그 주식의 최신 가격만 업데이트하고 화면은 유지하기
+          if (prev) {
+            const updatedSelected = res.data.find(s => s.id === prev.id);
+            return updatedSelected || prev;
+          }
+          return prev;
+        });
       }
     } catch (err) {}
   };
