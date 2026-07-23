@@ -18,7 +18,7 @@ function App() {
 
   const handleAuth = async (type) => {
     try {
-      const url = type === 'login' ? 'http://127.0.0.1:8000/api/auth/login' : 'http://127.0.0.1:8000/api/auth/register';
+      const url = type === 'login' ? 'https://stock-in-dos.onrender.com/api/auth/login' : 'https://stock-in-dos.onrender.com/api/auth/register';
       const res = await axios.post(url, authForm);
       if (type === 'login') {
         setUser(res.data);
@@ -42,7 +42,7 @@ function App() {
     const confirmDelete = window.confirm("🚨 정말로 계정을 삭제하시겠습니까?\n보유 중인 캐시와 주식이 모두 영구적으로 날아갑니다.");
     if (!confirmDelete) return;
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/users/${user.username}`);
+      await axios.delete(`https://stock-in-dos.onrender.com/api/users/${user.username}`);
       alert("계정이 성공적으로 초기화(삭제) 되었습니다.");
       logout();
     } catch (err) {
@@ -60,7 +60,7 @@ function App() {
     
     try {
       const endpoint = tradeType === 'buy' ? '/api/trade/buy' : '/api/trade/sell';
-      const res = await axios.post(`http://127.0.0.1:8000${endpoint}`, {
+      const res = await axios.post(`https://stock-in-dos.onrender.com${endpoint}`, {
         user_id: user.user_id,
         stock_id: selectedStock.id,
         quantity: qty
@@ -75,7 +75,7 @@ function App() {
 
   const fetchStocks = async () => {
     try {
-      const res = await axios.get('http://127.0.0.1:8000/api/stocks');
+      const res = await axios.get('https://stock-in-dos.onrender.com/api/stocks');
       if (Array.isArray(res.data)) {
         setStocks(res.data);
         if (!selectedStock && res.data.length > 0) setSelectedStock(res.data[0]);
@@ -90,7 +90,7 @@ function App() {
 
   const fetchHistory = async (stockId) => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/api/stocks/${stockId}/history`);
+      const res = await axios.get(`https://stock-in-dos.onrender.com/api/stocks/${stockId}/history`);
       setHistory(Array.isArray(res.data) ? res.data : []);
     } catch (err) {}
   };
@@ -98,7 +98,7 @@ function App() {
   const fetchPortfolio = async () => {
     if (!user) return;
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/api/users/${user.user_id}/portfolio`);
+      const res = await axios.get(`https://stock-in-dos.onrender.com/api/users/${user.user_id}/portfolio`);
       setPortfolio(res.data);
     } catch (err) {}
   };
