@@ -31,6 +31,7 @@ def get_db_connection():
     return pymysql.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASS, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor)
 
 NEXT_UPDATE_TIME = time.time() + (25 * 60)
+manipulated_targets = {}
 
 @app.get("/api/timer")
 def get_time_left():
@@ -189,7 +190,6 @@ def sell_stock(req: TradeRequest):
     conn.close()
     return {"message": f"매도 완료! (+{total_price}원)"}
 
-# ⭐️ 어드민 로직 (개인 수익률 계산 추가)
 ADMINS = ["ch__os", "CIDER22", "Zzzxvr"]
 
 @app.get("/api/admin/dashboard")
@@ -201,7 +201,6 @@ def get_admin_dashboard(username: str):
     cursor.execute("SELECT id, username, cash FROM users")
     users = cursor.fetchall()
     
-    # average_price를 가져오도록 수정
     cursor.execute("SELECT us.user_id, s.name, us.quantity, s.current_price, us.average_price FROM user_stocks us JOIN stocks s ON us.stock_id = s.id WHERE us.quantity > 0")
     stocks_data = cursor.fetchall()
     conn.close()
@@ -281,30 +280,42 @@ def process_bank(req: BankProcess):
 
 @app.post("/api/admin/manipulate")
 def manipulate_stock(req: ManipulateReq):
+    global manipulated_targets
     if req.admin_name not in ADMINS:
         raise HTTPException(status_code=403, detail="권한 없음")
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE stocks SET current_price=%s WHERE id=%s", (req.new_price, req.stock_id))
-    cursor.execute("INSERT INTO price_histories (stock_id, price) VALUES (%s, %s)", (req.stock_id, req.new_price))
-    conn.commit()
-    conn.close()
-    return {"message": "주가 조작 완료! (신의 손 발동 ⚡)"}
+    
+    manipulated_targets[req.stock_id] = req.new_price
+    return {"message": f"주가 조작 예약 완료! (다음 변동 시간에 적용됩니다 ⚡)"}
 
+# ⭐️ 0.5% 단위로 상승/하락하게 로직 수정!
 def update_stock_prices():
-    global NEXT_UPDATE_TIME
+    global NEXT_UPDATE_TIME, manipulated_targets
     NEXT_UPDATE_TIME = time.time() + (25 * 60)
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, current_price FROM stocks")
     stocks = cursor.fetchall()
     
+    # -10부터 10까지의 숫자 중 0을 제외한 리스트를 만듭니다. (무조건 오르거나 내리게 하기 위함)
+    multipliers = [i for i in range(-10, 11) if i != 0]
+    
     for stock in stocks:
-        change_percent = random.uniform(-0.05, 0.05)
-        new_price = math.floor(stock['current_price'] * (1 + change_percent))
-        new_price = max(100, new_price)
-        cursor.execute("UPDATE stocks SET current_price=%s WHERE id=%s", (new_price, stock['id']))
-        cursor.execute("INSERT INTO price_histories (stock_id, price) VALUES (%s, %s)", (stock['id'], new_price))
+        stock_id = stock['id']
+        
+        if stock_id in manipulated_targets:
+            new_price = manipulated_targets.pop(stock_id) 
+        else:
+            # 리스트에서 숫자 하나를 뽑아 0.005(0.5%)를 곱합니다.
+            # 예: 3이 뽑히면 3 * 0.005 = 0.015 (1.5%) 상승!
+            chosen_multiplier = random.choice(multipliers)
+            change_percent = chosen_multiplier * 0.005
+            
+            new_price = math.floor(stock['current_price'] * (1 + change_percent))
+            new_price = max(100, new_price)
+            
+        cursor.execute("UPDATE stocks SET current_price=%s WHERE id=%s", (new_price, stock_id))
+        cursor.execute("INSERT INTO price_histories (stock_id, price) VALUES (%s, %s)", (stock_id, new_price))
         
     conn.commit()
     conn.close()
