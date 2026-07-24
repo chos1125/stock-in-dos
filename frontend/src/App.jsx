@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Chart from 'react-apexcharts';
 
-// ⭐️ 1. 어드민 아이디 최신화 완료!
 const ADMIN_IDS = ['ch__os', 'CIDER22', 'Zzzxvr'];
 const API_BASE = 'https://stock-in-dos.onrender.com';
 
@@ -23,25 +22,27 @@ function App() {
   const [showBankForm, setShowBankForm] = useState(false);
   const [bankForm, setBankForm] = useState({ req_type: '입금', amount: '' });
 
-  // ⭐️ 2. 25분(1500초) 카운트다운 상태 변수
-  const UPDATE_INTERVAL = 25 * 60; 
-  const [timeLeft, setTimeLeft] = useState(UPDATE_INTERVAL);
-
+  const [timeLeft, setTimeLeft] = useState(1500);
   const isAdmin = user && ADMIN_IDS.includes(user.username);
 
-  // ⭐️ 타이머 1초씩 줄어드는 로직
   useEffect(() => {
     const timerId = setInterval(() => {
-      setTimeLeft((prev) => (prev <= 1 ? UPDATE_INTERVAL : prev - 1));
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
     return () => clearInterval(timerId);
   }, []);
 
-  // ⭐️ 초를 분:초(MM:SS) 형식으로 예쁘게 바꿔주는 함수
   const formatTime = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const fetchTimer = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/timer`);
+      setTimeLeft(res.data.time_left);
+    } catch (err) {}
   };
 
   const handleAuth = async (type) => {
@@ -165,7 +166,8 @@ function App() {
     if (user && !showAdmin) {
       fetchStocks();
       fetchPortfolio();
-      const interval = setInterval(() => { fetchStocks(); fetchPortfolio(); }, 5000);
+      fetchTimer(); 
+      const interval = setInterval(() => { fetchStocks(); fetchPortfolio(); fetchTimer(); }, 5000);
       return () => clearInterval(interval);
     }
   }, [user, showAdmin]);
@@ -174,17 +176,32 @@ function App() {
     if (selectedStock) fetchHistory(selectedStock.id);
   }, [selectedStock?.id]);
 
+  // ⭐️ 시간 보정: 서버가 던져주는 UTC 시간에 'Z'를 강제로 붙여서 한국시간으로 완벽하게 파싱되게 만듭니다!
   const chartSeries = [{
     name: selectedStock ? selectedStock.name : '시세',
-    data: history.map(item => ({ x: new Date(item.recorded_at).getTime(), y: item.price }))
+    data: history.map(item => {
+      const timeString = item.recorded_at.endsWith('Z') ? item.recorded_at : item.recorded_at + 'Z';
+      return { x: new Date(timeString).getTime(), y: item.price };
+    })
   }];
+
+  // ⭐️ 차트 설정: 한국 시간 강제 표시 및 25분 간격이 잘 보이도록 포맷 변경
   const chartOptions = {
     chart: { type: 'area', background: 'transparent', toolbar: { show: false }, animations: { enabled: true, easing: 'linear', dynamicAnimation: { speed: 1000 } } },
-    theme: { mode: 'dark' }, xaxis: { type: 'datetime', labels: { style: { colors: '#8b9bb4' } } },
+    theme: { mode: 'dark' }, 
+    xaxis: { 
+      type: 'datetime', 
+      labels: { 
+        datetimeUTC: false, // UTC 무시하고 유저 컴퓨터(한국) 시간으로 표시
+        format: 'HH:mm',    // 시간:분 형식으로만 깔끔하게 출력
+        style: { colors: '#8b9bb4' } 
+      } 
+    },
     yaxis: { labels: { formatter: (val) => val ? val.toLocaleString() + '원' : '', style: { colors: '#8b9bb4' } } },
     stroke: { curve: 'smooth', width: 3, colors: ['#D4AF37'] },
     fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05, colors: ['#D4AF37'] } }, colors: ['#D4AF37'], grid: { borderColor: '#1e293b', strokeDashArray: 4 }
   };
+
   const inputStyle = { width: '100%', padding: '15px', marginBottom: '15px', borderRadius: '8px', border: '1px solid #1C2541', backgroundColor: '#0B132B', color: '#fff', fontSize: '1rem', boxSizing: 'border-box' };
 
   if (!user) {
@@ -210,6 +227,7 @@ function App() {
     );
   }
 
+  // ⭐️ 어드민 랭킹표에 "총 수익률" 칸 새로 추가!
   if (showAdmin) {
     return (
       <div style={{ minHeight: '100vh', backgroundColor: '#0B132B', color: '#ffffff', padding: '40px 20px', fontFamily: "'Pretendard', sans-serif" }}>
@@ -252,13 +270,25 @@ function App() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #1C2541', color: '#8b9bb4' }}>
-                  <th style={{ padding: '15px' }}>랭킹</th><th style={{ padding: '15px' }}>닉네임</th><th style={{ padding: '15px', color: '#D4AF37' }}>총 자산 (현금+주식)</th><th style={{ padding: '15px' }}>보유 현금</th><th style={{ padding: '15px' }}>보유 주식 목록</th>
+                  <th style={{ padding: '15px' }}>랭킹</th>
+                  <th style={{ padding: '15px' }}>닉네임</th>
+                  <th style={{ padding: '15px', color: '#D4AF37' }}>총 자산 (현금+주식)</th>
+                  <th style={{ padding: '15px' }}>총 수익률</th>
+                  <th style={{ padding: '15px' }}>보유 현금</th>
+                  <th style={{ padding: '15px' }}>보유 주식 목록</th>
                 </tr>
               </thead>
               <tbody>
                 {adminData.map((data, index) => (
                   <tr key={data.username} style={{ borderBottom: '1px solid #1C2541' }}>
-                    <td style={{ padding: '15px', fontWeight: 'bold' }}>{index + 1}위</td><td style={{ padding: '15px', fontWeight: 'bold' }}>{data.username}</td><td style={{ padding: '15px', color: '#D4AF37', fontWeight: 'bold' }}>{data.total_assets.toLocaleString()}원</td><td style={{ padding: '15px' }}>{data.cash.toLocaleString()}원</td><td style={{ padding: '15px', fontSize: '0.9rem', color: '#8b9bb4' }}>{data.holdings.length > 0 ? data.holdings.join(', ') : '없음'}</td>
+                    <td style={{ padding: '15px', fontWeight: 'bold' }}>{index + 1}위</td>
+                    <td style={{ padding: '15px', fontWeight: 'bold' }}>{data.username}</td>
+                    <td style={{ padding: '15px', color: '#D4AF37', fontWeight: 'bold' }}>{data.total_assets.toLocaleString()}원</td>
+                    <td style={{ padding: '15px', fontWeight: 'bold', color: data.return_rate > 0 ? '#ff4d4f' : data.return_rate < 0 ? '#3b82f6' : '#fff' }}>
+                      {data.return_rate > 0 ? '+' : ''}{data.return_rate}%
+                    </td>
+                    <td style={{ padding: '15px' }}>{data.cash.toLocaleString()}원</td>
+                    <td style={{ padding: '15px', fontSize: '0.9rem', color: '#8b9bb4' }}>{data.holdings.length > 0 ? data.holdings.join(', ') : '없음'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -294,12 +324,9 @@ function App() {
           </div>
           
           <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', flex: 1, justifyContent: 'flex-end' }}>
-            
-            {/* ⭐️ 총 수익률 요약 패널 + 25분 타이머 추가 */}
             <div style={{ backgroundColor: '#111936', padding: '20px 25px', borderRadius: '16px', border: '1px solid #1C2541', minWidth: '260px', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <span style={{ color: '#8b9bb4', fontSize: '1rem', fontWeight: 'bold' }}>📊 내 총 주식 수익률</span>
-                {/* ⭐️ 타이머 뱃지 */}
                 <div style={{ backgroundColor: '#1C2541', padding: '5px 12px', borderRadius: '20px', border: '1px solid #D4AF37', color: '#D4AF37', fontWeight: 'bold', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   ⏳ 다음 변동 {formatTime(timeLeft)}
                 </div>
@@ -364,7 +391,6 @@ function App() {
                 )}
               </div>
             </div>
-
           </div>
         </div>
 

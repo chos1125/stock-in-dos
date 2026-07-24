@@ -2,6 +2,7 @@ import random
 import math
 import pymysql
 import os
+import time
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,7 +30,13 @@ DB_PORT = 26565
 def get_db_connection():
     return pymysql.connect(host=DB_HOST, port=DB_PORT, user=DB_USER, password=DB_PASS, database=DB_NAME, cursorclass=pymysql.cursors.DictCursor)
 
-# --- Pydantic 모델 ---
+NEXT_UPDATE_TIME = time.time() + (25 * 60)
+
+@app.get("/api/timer")
+def get_time_left():
+    left = int(NEXT_UPDATE_TIME - time.time())
+    return {"time_left": max(0, left)}
+
 class AuthForm(BaseModel):
     username: str
     password: str
@@ -49,7 +56,11 @@ class BankProcess(BaseModel):
     req_id: int
     action: str
 
-# --- 유저 인증 ---
+class ManipulateReq(BaseModel):
+    admin_name: str
+    stock_id: int
+    new_price: int
+
 @app.post("/api/auth/register")
 def register(form: AuthForm):
     conn = get_db_connection()
@@ -73,16 +84,6 @@ def login(form: AuthForm):
         raise HTTPException(status_code=400, detail="닉네임이나 비밀번호가 틀렸습니다.")
     return {"user_id": user['id'], "username": user['username']}
 
-@app.delete("/api/users/{username}")
-def delete_user(username: str):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM users WHERE username=%s", (username,))
-    conn.commit()
-    conn.close()
-    return {"message": "계정 삭제 완료"}
-
-# --- 주식 조회 ---
 @app.get("/api/stocks")
 def get_stocks():
     conn = get_db_connection()
@@ -101,7 +102,6 @@ def get_stock_history(stock_id: int):
     conn.close()
     return history
 
-# --- ⭐️ 내 지갑 (수익률 포함 업데이트!) ---
 @app.get("/api/users/{user_id}/portfolio")
 def get_portfolio(user_id: int):
     conn = get_db_connection()
@@ -137,7 +137,6 @@ def get_portfolio(user_id: int):
         
     return {"cash": user['cash'], "stocks": portfolio_stocks}
 
-# --- ⭐️ 거래 (평단가 계산 추가!) ---
 @app.post("/api/trade/buy")
 def buy_stock(req: TradeRequest):
     conn = get_db_connection()
@@ -190,7 +189,7 @@ def sell_stock(req: TradeRequest):
     conn.close()
     return {"message": f"매도 완료! (+{total_price}원)"}
 
-# --- ⭐️ 어드민 시스템 (입출금 & 대시보드 추가!) ---
+# ⭐️ 어드민 로직 (개인 수익률 계산 추가)
 ADMINS = ["ch__os", "CIDER22", "Zzzxvr"]
 
 @app.get("/api/admin/dashboard")
@@ -201,22 +200,30 @@ def get_admin_dashboard(username: str):
     cursor = conn.cursor()
     cursor.execute("SELECT id, username, cash FROM users")
     users = cursor.fetchall()
-    cursor.execute("SELECT us.user_id, s.name, us.quantity, s.current_price FROM user_stocks us JOIN stocks s ON us.stock_id = s.id WHERE us.quantity > 0")
+    
+    # average_price를 가져오도록 수정
+    cursor.execute("SELECT us.user_id, s.name, us.quantity, s.current_price, us.average_price FROM user_stocks us JOIN stocks s ON us.stock_id = s.id WHERE us.quantity > 0")
     stocks_data = cursor.fetchall()
     conn.close()
     
-    user_dict = {u['id']: {"username": u['username'], "cash": u['cash'], "total_stock_value": 0, "holdings": []} for u in users}
+    user_dict = {u['id']: {"username": u['username'], "cash": u['cash'], "total_stock_value": 0, "total_invested": 0, "holdings": []} for u in users}
+    
     for st in stocks_data:
         uid = st['user_id']
         if uid in user_dict:
             val = st['quantity'] * st['current_price']
+            invested = st['quantity'] * (st['average_price'] or 0)
             user_dict[uid]['total_stock_value'] += val
+            user_dict[uid]['total_invested'] += invested
             user_dict[uid]['holdings'].append(f"{st['name']} {st['quantity']}주")
             
     result = []
     for uid, data in user_dict.items():
         data['total_assets'] = data['cash'] + data['total_stock_value']
+        profit = data['total_stock_value'] - data['total_invested']
+        data['return_rate'] = round((profit / data['total_invested']) * 100, 2) if data['total_invested'] > 0 else 0.0
         result.append(data)
+        
     result.sort(key=lambda x: x['total_assets'], reverse=True)
     return result
 
@@ -272,8 +279,21 @@ def process_bank(req: BankProcess):
     conn.close()
     return {"message": "처리 완료"}
 
-# --- 주식 자동 변동 타이머 ---
+@app.post("/api/admin/manipulate")
+def manipulate_stock(req: ManipulateReq):
+    if req.admin_name not in ADMINS:
+        raise HTTPException(status_code=403, detail="권한 없음")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE stocks SET current_price=%s WHERE id=%s", (req.new_price, req.stock_id))
+    cursor.execute("INSERT INTO price_histories (stock_id, price) VALUES (%s, %s)", (req.stock_id, req.new_price))
+    conn.commit()
+    conn.close()
+    return {"message": "주가 조작 완료! (신의 손 발동 ⚡)"}
+
 def update_stock_prices():
+    global NEXT_UPDATE_TIME
+    NEXT_UPDATE_TIME = time.time() + (25 * 60)
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, current_price FROM stocks")
@@ -290,6 +310,5 @@ def update_stock_prices():
     conn.close()
 
 scheduler = BackgroundScheduler()
-# 🚨 주의: 이전에 변경하셨던 가격 변동 주기로 아래 숫자를 꼭 맞춰주세요!
 scheduler.add_job(update_stock_prices, 'interval', minutes=25) 
 scheduler.start()
